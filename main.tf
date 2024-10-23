@@ -46,19 +46,6 @@ module "unity_catalog_container" {
     storage_account_name = module.unity_catalog.name
 }
 
-provider "databricks" {
-  host = module.workspace.workspace_url
-}
-
-// Provider for databricks account
-provider "databricks" {
-    alias = "azure_account"
-    host  = "https://accounts.azuredatabricks.net"
-    account_id = local.account_id
-    auth_type  = "azure-cli"
-}
-
-data "databricks_current_user" "me" {}
 
 // Create azure managed identity to be used by unity catalog metastore
 // Assign the Storage Blob Data Contributor role to managed identity to allow unity catalog to access the storage
@@ -101,7 +88,7 @@ resource "azuread_application" "scim" {
 
 // SCIM SPA
 data "azuread_service_principal" "scim" {
-  application_id = azuread_application.scim.application_id
+  object_id = azuread_application.scim.object_id
 }
 
 // Add SCIM groups to the application
@@ -110,6 +97,7 @@ resource "azuread_app_role_assignment" "scim" {
   app_role_id         = data.azuread_service_principal.scim.app_role_ids["User"]
   principal_object_id = each.key
   resource_object_id  = data.azuread_service_principal.scim.object_id
+  depends_on=[module.azure_ad_groups]
 }
 
 // Synchronization job ( Provisioner in Azure AD application)
